@@ -1,0 +1,204 @@
+-- ================================================
+-- GROW A GARDEN - AUTO ELEPHANT V2 PRO
+-- ================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local LocalPlayer = Players.LocalPlayer
+
+-- ================================================
+-- CONFIG & STATE
+-- ================================================
+local Config = {
+    AutoElephant = false,
+    Target = { Pet = nil, LevelBefore = 40, Weight = 60.5 },
+    ElephantTeam = { ElephantPet = nil, CooldownPets = {} },
+    LevelingTeam = { XPPet = nil, CooldownPets = {} }
+}
+
+-- Daftar item yang BUKAN pet (Blacklist)
+local NotAPet = {"Watering Can", "Tomato", "Blueberry", "Strawberry", "Carrot", "Pumpkin", "Buttercup", "Bald Eagle"}
+
+-- ================================================
+-- REFINED PET SCANNER (Hanya mengambil Pet)
+-- ================================================
+local function IsValidPet(item)
+    -- Cek blacklist
+    for _, name in ipairs(NotAPet) do
+        if string.find(item.Name, name) then return false end
+    end
+    
+    -- Game Grow a Garden biasanya menaruh attribute Age/Level/Weight pada Pet
+    local hasStats = item:GetAttribute("Age") or item:GetAttribute("Level") or item:GetAttribute("Weight")
+    local isTool = item:IsA("Tool")
+    
+    return isTool and hasStats
+end
+
+local function ScanOnlyPets()
+    local petList = {}
+    local seen = {}
+
+    -- Scan Backpack & Character
+    local sources = {LocalPlayer:FindFirstChild("Backpack"), LocalPlayer.Character}
+    for _, src in ipairs(sources) do
+        if src then
+            for _, item in ipairs(src:GetChildren()) do
+                if IsValidPet(item) and not seen[item.Name] then
+                    table.insert(petList, {
+                        Name = item.Name,
+                        Instance = item,
+                        Age = item:GetAttribute("Age") or item:GetAttribute("Level") or 1,
+                        Weight = item:GetAttribute("Weight") or 0
+                    })
+                    seen[item.Name] = true
+                end
+            end
+        end
+    end
+    return petList
+end
+
+-- ================================================
+-- UI CONSTRUCTION (Sesuai Gambar Referensi)
+-- ================================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "GaG_Elephant_V2"
+ScreenGui.Parent = LocalPlayer.PlayerGui
+
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 400, 0, 500)
+Main.Position = UDim2.new(0.5, -200, 0.5, -250)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.BorderSizePixel = 0
+Main.Parent = ScreenGui
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+
+-- Stroke kuning seperti gambar
+local Stroke = Instance.new("UIStroke")
+Stroke.Color = Color3.fromRGB(255, 200, 0)
+Stroke.Thickness = 1.5
+Stroke.Parent = Main
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Text = "( Elephant Team ) Threshold Age & Kg"
+Title.TextColor3 = Color3.fromRGB(255, 200, 0)
+Title.BackgroundTransparency = 1
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.Parent = Main
+
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -20, 1, -100)
+Scroll.Position = UDim2.new(0, 10, 0, 50)
+Scroll.BackgroundTransparency = 1
+Scroll.ScrollBarThickness = 2
+Scroll.Parent = Main
+Instance.new("UIListLayout", Scroll).Padding = UDim.new(0, 5)
+
+-- ================================================
+-- FUNCTIONAL COMPONENTS
+-- ================================================
+local function CreateSelector(text, onClick)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    btn.Text = "  Select " .. text
+    btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Font = Enum.Font.Gotham
+    btn.Parent = Scroll
+    Instance.new("UICorner", btn)
+
+    btn.MouseButton1Click:Connect(function()
+        local pets = ScanOnlyPets()
+        -- Popup sederhana untuk pilih pet
+        for _, p in ipairs(pets) do
+            btn.Text = "  " .. p.Name .. " | Age: " .. p.Age
+            onClick(p)
+            break -- Untuk demo, ambil yang pertama ketemu
+        end
+    end)
+end
+
+CreateSelector("Target Pet", function(p) Config.Target.Pet = p end)
+CreateSelector("Elephant Pet (Main)", function(p) Config.ElephantTeam.ElephantPet = p end)
+
+-- ================================================
+-- AUTO ELEPHANT LOGIC (FIXED BOOST)
+-- ================================================
+local function EquipPet(petObj)
+    if not petObj or not petObj.Instance then return end
+    local char = LocalPlayer.Character
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum:EquipTool(petObj.Instance)
+    end
+end
+
+RunService.Heartbeat:Connect(function()
+    if not Config.AutoElephant or not Config.Target.Pet then return end
+    
+    local target = Config.Target.Pet
+    local currentAge = target.Instance:GetAttribute("Age") or target.Instance:GetAttribute("Level") or 0
+    local currentKg = target.Instance:GetAttribute("Weight") or 0
+
+    -- Jika umur di bawah target (misal 40), pakai Xp Pet/Leveling Team
+    if currentAge < Config.Target.LevelBefore then
+        if Config.LevelingTeam.XPPet then
+            EquipPet(Config.LevelingTeam.XPPet)
+        end
+    else
+        -- Jika sudah cukup umur, aktifkan Elephant Boost
+        if Config.ElephantTeam.ElephantPet then
+            EquipPet(Config.ElephantTeam.ElephantPet)
+        end
+    end
+
+    -- Berhenti jika target berat tercapai
+    if currentKg >= Config.Target.Weight then
+        Config.AutoElephant = false
+        print("Target Reached!")
+    end
+end)
+
+-- Tombol Start/Stop
+local StartBtn = Instance.new("TextButton")
+StartBtn.Size = UDim2.new(0, 100, 0, 40)
+StartBtn.Position = UDim2.new(0, 10, 1, -50)
+StartBtn.Text = "START KG"
+StartBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartBtn.Parent = Main
+Instance.new("UICorner", StartBtn)
+
+StartBtn.MouseButton1Click:Connect(function()
+    Config.AutoElephant = not Config.AutoElephant
+    StartBtn.Text = Config.AutoElephant and "STOP" or "START KG"
+    StartBtn.BackgroundColor3 = Config.AutoElephant and Color3.fromRGB(150, 0, 0) or Color3.fromRGB(40, 40, 40)
+end)
+
+-- Dragging logic
+local dragInput; local dragStart; local startPos
+Main.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragStart = input.Position; startPos = Main.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then dragStart = nil end
+        end)
+    end
+end)
+Main.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then dragInput = input end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragStart then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+print("✅ Auto Elephant V2 Pro Loaded")
