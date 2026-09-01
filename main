@@ -1,214 +1,193 @@
--- ================================================
--- GROW A GARDEN - AUTO ELEPHANT V3 (ULTIMATE FIX)
--- ================================================
+-- Load Library UI (Axon / WindUI Style)
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local LocalPlayer = Players.LocalPlayer
+local Window = Rayfield:CreateWindow({
+   Name = "Axon Hub | Grow a Chicken Fighter",
+   LoadingTitle = "Axon Hub",
+   LoadingSubtitle = "by kokmoxXx",
+   ConfigurationSaving = {
+      Enabled = false
+   },
+   KeySystem = false -- Tanpa Key System
+})
 
--- ================================================
--- CONFIG
--- ================================================
-local Config = {
-    AutoElephant = false,
-    Target = { Pet = nil, LevelBefore = 40, Weight = 60.5 },
-    ElephantTeam = { ElephantPet = nil },
-    LevelingTeam = { XPPet = nil }
-}
+---------------------------------------------------------
+-- TAB 1: MONEY FARM
+---------------------------------------------------------
+local MoneyFarmTab = Window:CreateTab("Money Farm", 4483362458)
 
-local Blacklist = {"Watering Can", "Tomato", "Blueberry", "Strawberry", "Carrot", "Pumpkin", "Buttercup", "Seed", "Fertilizer"}
+local SectionFarm = MoneyFarmTab:CreateSection("One-Switch Farming")
 
--- ================================================
--- AGGRESSIVE SCANNER (Mencari di semua folder data)
--- ================================================
-local function GetOnlyPets()
-    local pets = {}
-    local seen = {}
-    
-    -- Mencari di Backpack, Character, dan seluruh folder Data pemain
-    local searchAreas = {LocalPlayer:FindFirstChild("Backpack"), LocalPlayer.Character, LocalPlayer:FindFirstChild("Data")}
-    
-    for _, area in ipairs(searchAreas) do
-        if area then
-            for _, item in ipairs(area:GetDescendants()) do
-                -- Pet biasanya berupa Tool atau Configuration dengan attribute Age/Level
-                local age = item:GetAttribute("Age") or item:GetAttribute("Level")
-                
-                if age and not seen[item.Name] then
-                    local nameLower = string.lower(item.Name)
-                    local isBlacklisted = false
-                    for _, word in ipairs(Blacklist) do
-                        if string.find(nameLower, string.lower(word)) then isBlacklisted = true break end
-                    end
-                    
-                    if not isBlacklisted then
-                        table.insert(pets, {
-                            Name = item.Name,
-                            Instance = item,
-                            Age = tonumber(age) or 1,
-                            Weight = item:GetAttribute("Weight") or 0
-                        })
-                        seen[item.Name] = true
-                    end
-                end
-            end
-        end
-    end
-    return pets
-end
+local ToggleMoneyFarm = MoneyFarmTab:CreateToggle({
+   Name = "Automatic Money Farm",
+   CurrentValue = false,
+   Callback = function(Value)
+      -- Logic Auto Money Farm di sini
+      _G.AutoMoneyFarm = Value
+      task.spawn(function()
+         while _G.AutoMoneyFarm do
+            task.wait(0.1)
+            -- Code farm
+         end
+      end)
+   end,
+})
 
--- ================================================
--- UI BUILDER (With Minimize & Back)
--- ================================================
-if LocalPlayer.PlayerGui:FindFirstChild("GaG_Pro_V3") then
-    LocalPlayer.PlayerGui.GaG_Pro_V3:Destroy()
-end
+local ToggleWorldPickups = MoneyFarmTab:CreateToggle({
+   Name = "Include World Pickups",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.IncludePickups = Value
+   end,
+})
 
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GaG_Pro_V3"
-ScreenGui.Parent = LocalPlayer.PlayerGui
+local SliderFarmDelay = MoneyFarmTab:CreateSlider({
+   Name = "Farm Cycle Delay",
+   Range = {0, 100},
+   Increment = 1,
+   Suffix = "s",
+   CurrentValue = 20,
+   Callback = function(Value)
+      _G.FarmDelay = Value
+   end,
+})
 
-local Main = Instance.new("Frame")
-Main.Size = UDim2.new(0, 380, 0, 480)
-Main.Position = UDim2.new(0.5, -190, 0.5, -240)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Main.BorderSizePixel = 0
-Main.Parent = ScreenGui
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-local MainStroke = Instance.new("UIStroke", Main)
-MainStroke.Color = Color3.fromRGB(255, 200, 0)
+local SectionIncubator = MoneyFarmTab:CreateSection("Incubator")
 
--- HEADER & MINIMIZE
-local Header = Instance.new("Frame")
-Header.Size = UDim2.new(1, 0, 0, 40)
-Header.BackgroundTransparency = 1
-Header.Parent = Main
+local ToggleIncubator = MoneyFarmTab:CreateToggle({
+   Name = "Automatic Incubator",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.AutoIncubator = Value
+   end,
+})
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -80, 1, 0)
-Title.Position = UDim2.new(0, 40, 0, 0)
-Title.Text = "AUTO ELEPHANT V3"
-Title.TextColor3 = Color3.fromRGB(255, 200, 0)
-Title.Font = Enum.Font.GothamBold
-Title.BackgroundTransparency = 1
-Title.Parent = Header
+local ToggleIncubatorUpgrades = MoneyFarmTab:CreateToggle({
+   Name = "Automatic Incubator Upgrades",
+   CurrentValue = true,
+   Callback = function(Value)
+      _G.AutoIncubatorUpgrades = Value
+   end,
+})
 
-local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
-MinBtn.Position = UDim2.new(1, -35, 0, 5)
-MinBtn.Text = "-"
-MinBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.Parent = Header
-Instance.new("UICorner", MinBtn)
+local SliderIncubatorReserve = MoneyFarmTab:CreateSlider({
+   Name = "Incubator Money Reserve",
+   Range = {0, 1000000},
+   Increment = 1000,
+   Suffix = "$",
+   CurrentValue = 0,
+   Callback = function(Value)
+      _G.IncubatorReserve = Value
+   end,
+})
 
-local BackBtn = Instance.new("TextButton")
-BackBtn.Size = UDim2.new(0, 30, 0, 30)
-BackBtn.Position = UDim2.new(0, 5, 0, 5)
-BackBtn.Text = "<"
-BackBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-BackBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-BackBtn.Visible = false
-BackBtn.Parent = Header
-Instance.new("UICorner", BackBtn)
+---------------------------------------------------------
+-- TAB 2: CHICKENS
+---------------------------------------------------------
+local ChickensTab = Window:CreateTab("Chickens", 4483362458)
+-- Tambahkan fitur manajemen ayam di sini
 
-local Scroll = Instance.new("ScrollingFrame")
-Scroll.Size = UDim2.new(1, -20, 1, -120)
-Scroll.Position = UDim2.new(0, 10, 0, 50)
-Scroll.BackgroundTransparency = 1
-Scroll.ScrollBarThickness = 2
-Scroll.Parent = Main
-Instance.new("UIListLayout", Scroll).Padding = UDim.new(0, 5)
+---------------------------------------------------------
+-- TAB 3: COOP
+---------------------------------------------------------
+local CoopTab = Window:CreateTab("Coop", 4483362458)
 
--- ================================================
--- UI LOGIC
--- ================================================
-local isMinimized = false
-MinBtn.MouseButton1Click:Connect(function()
-    isMinimized = not isMinimized
-    if isMinimized then
-        Main:TweenSize(UDim2.new(0, 380, 0, 40), "Out", "Quad", 0.3, true)
-        Scroll.Visible = false
-    else
-        Main:TweenSize(UDim2.new(0, 380, 0, 480), "Out", "Quad", 0.3, true)
-        Scroll.Visible = true
-    end
-end)
+local SectionCoopImp = CoopTab:CreateSection("Improvements")
 
-function ShowPetList(callback)
-    BackBtn.Visible = true
-    for _, v in ipairs(Scroll:GetChildren()) do if v:IsA("TextButton") or v:IsA("TextLabel") then v:Destroy() end end
-    
-    local pets = GetOnlyPets()
-    if #pets == 0 then
-        local l = Instance.new("TextLabel")
-        l.Size = UDim2.new(1, 0, 0, 40)
-        l.Text = "NO PET FOUNDS - MOVE TO BACKPACK"
-        l.TextColor3 = Color3.fromRGB(255, 100, 100)
-        l.BackgroundTransparency = 1
-        l.Parent = Scroll
-    end
+local ToggleCoopImp = CoopTab:CreateToggle({
+   Name = "Automatic Improvements",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.AutoCoopImprovement = Value
+   end,
+})
 
-    for _, pet in ipairs(pets) do
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.new(1, -5, 0, 40)
-        b.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-        b.Text = "  " .. pet.Name .. " (Age: " .. pet.Age .. ")"
-        b.TextColor3 = Color3.fromRGB(255, 255, 255)
-        b.TextXAlignment = Enum.TextXAlignment.Left
-        b.Parent = Scroll
-        Instance.new("UICorner", b)
-        b.MouseButton1Click:Connect(function() callback(pet) CreateMenu() end)
-    end
-end
+local DropdownImpTypes = CoopTab:CreateDropdown({
+   Name = "Improvement Types",
+   Options = {"Buy Generator", "Upgrade Generator", "Expand Slots"},
+   CurrentOption = {"Buy Generator"},
+   MultipleOptions = true,
+   Callback = function(Options)
+      _G.ImprovementTypes = Options
+   end,
+})
 
-BackBtn.MouseButton1Click:Connect(function() CreateMenu() end)
+local SliderKeepMoney = CoopTab:CreateSlider({
+   Name = "Keep Money Above",
+   Range = {0, 10000000},
+   Increment = 50000,
+   Suffix = "$",
+   CurrentValue = 0,
+   Callback = function(Value)
+      _G.KeepMoneyAbove = Value
+   end,
+})
 
-function CreateMenu()
-    BackBtn.Visible = false
-    for _, v in ipairs(Scroll:GetChildren()) do if v:IsA("TextButton") or v:IsA("TextLabel") then v:Destroy() end end
-    
-    local function AddBtn(txt, selected, cb)
-        local b = Instance.new("TextButton")
-        b.Size = UDim2.new(1, -5, 0, 45)
-        b.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        b.Text = selected and "✅ " .. selected.Name or "👉 " .. txt
-        b.TextColor3 = Color3.fromRGB(200, 200, 200)
-        b.Parent = Scroll
-        Instance.new("UICorner", b)
-        b.MouseButton1Click:Connect(cb)
-    end
+local SliderTimeImp = CoopTab:CreateSlider({
+   Name = "Time Between Improvements",
+   Range = {0.1, 10},
+   Increment = 0.1,
+   Suffix = "s",
+   CurrentValue = 0.5,
+   Callback = function(Value)
+      _G.TimeBetweenImp = Value
+   end,
+})
 
-    AddBtn("Select Target Pet", Config.Target.Pet, function() ShowPetList(function(p) Config.Target.Pet = p end) end)
-    AddBtn("Select Elephant Pet", Config.ElephantTeam.ElephantPet, function() ShowPetList(function(p) Config.ElephantTeam.ElephantPet = p end) end)
-    AddBtn("Select XP Pet", Config.LevelingTeam.XPPet, function() ShowPetList(function(p) Config.LevelingTeam.XPPet = p end) end)
-end
+---------------------------------------------------------
+-- TAB 4: TOWER
+---------------------------------------------------------
+local TowerTab = Window:CreateTab("Tower", 4483362458)
 
-CreateMenu()
+local SectionTower = TowerTab:CreateSection("Tower Runs")
 
--- START BUTTON
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(1, -20, 0, 50)
-ToggleBtn.Position = UDim2.new(0, 10, 1, -60)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-ToggleBtn.Text = "START KG"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.Parent = Main
-Instance.new("UICorner", ToggleBtn)
+local ToggleTower = TowerTab:CreateToggle({
+   Name = "Automatic Tower",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.AutoTower = Value
+   end,
+})
 
-ToggleBtn.MouseButton1Click:Connect(function()
-    Config.AutoElephant = not Config.AutoElephant
-    ToggleBtn.Text = Config.AutoElephant and "STOP" or "START KG"
-    ToggleBtn.TextColor3 = Config.AutoElephant and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(255, 200, 0)
-end)
+local SliderTowerTime = TowerTab:CreateSlider({
+   Name = "Time Between Runs",
+   Range = {1, 30},
+   Increment = 0.1,
+   Suffix = "s",
+   CurrentValue = 6.4,
+   Callback = function(Value)
+      _G.TowerDelay = Value
+   end,
+})
 
--- DRAG
-local d, di, ds, sp
-Header.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then d = true ds = i.Position sp = Main.Position end end)
-UserInputService.InputChanged:Connect(function(i) if i == di and d then local del = i.Position - ds Main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + del.X, sp.Y.Scale, sp.Y.Offset + del.Y) end end)
-Header.InputChanged:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseMovement then di = i end end)
-Header.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then d = false end end)
+---------------------------------------------------------
+-- TAB 5: WEBHOOKS
+---------------------------------------------------------
+local WebhooksTab = Window:CreateTab("Webhooks", 4483362458)
 
-print("✅ UI V3 Loaded. Jika pet 'No Found', coba gerakkan pet di inventory.")
+local SectionWebhook = WebhooksTab:CreateSection("Discord Webhook")
+
+local InputWebhook = WebhooksTab:CreateInput({
+   Name = "Discord Webhook URL",
+   PlaceholderText = "https://discord.com/api/webhooks/...",
+   RemoveTextOnFocus = false,
+   Callback = function(Text)
+      _G.WebhookURL = Text
+   end,
+})
+
+local ToggleWebhookNotif = WebhooksTab:CreateToggle({
+   Name = "Send Webhook Notifications",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.SendWebhook = Value
+   end,
+})
+
+local ToggleSecretAlerts = WebhooksTab:CreateToggle({
+   Name = "Secret Chicken Alerts",
+   CurrentValue = false,
+   Callback = function(Value)
+      _G.SecretAlerts = Value
+   end,
+})
